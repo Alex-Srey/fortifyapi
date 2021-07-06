@@ -566,7 +566,7 @@ class FortifyApi(object):
         Delete all tokens by user from the auth-token-controller
         :return:
         """
-        url = '/api/v1/tokens' + '?all=true'
+        url = "/api/v1/tokens/" + "?all=true"
         return self._request('DELETE', url)
 
     def get_all_tokens(self):
@@ -714,7 +714,92 @@ class FortifyApi(object):
                }
         url = '/api/v1/ldapObjects'
         return self._request('POST', url, json=data)
-
+        
+    def get_ldap_user(self, query):
+        url = "/api/v1/ldapObjects/?q=" + query
+        return self._request('GET', url)
+    
+    def delete_ldap_user(self, user_id):
+        url = "/api/v1/ldapObjects/" + str(user_id)
+        return self._request('DELETE', url)
+        
+    def get_ldap_user_from_id(self, id):
+        url = "/api/v1/ldapObjects/" + str(id)
+        return self._request('GET', url)
+        
+    def add_ldap_user(self, distinguishedName, email, firstName, lastName, 
+    ldapType, name, role_description, role_id, role, objectVersion, publishVersion):
+        data = {
+  "distinguishedName": distinguishedName,
+  "email": email,
+  "firstName": firstName,
+  "lastName": lastName,
+  "ldapType": ldapType,
+  "name": name,
+  "roles": [
+    {
+      "allApplicationRole": False,
+      "assignedToNonUsers": False,
+      "builtIn": False,
+      "default": True,
+      "deletable": True,
+      "description": role_description,
+      "id": role_id,
+      "name": role,
+      "objectVersion": objectVersion,
+      "permissionIds": ["string"
+      ],
+      "publishVersion": publishVersion,
+      "userOnly": False
+    }
+  ]
+}
+        return self._request('POST', url, json = data)
+        
+    def update_ldap_user_role(self, user_id, distinguishedName, email, firstName, lastName, 
+    ldapType, name, role_description, role_id, role, objectVersion, publishVersion):
+        data = {
+  "distinguishedName": distinguishedName,
+  "email": email,
+  "firstName": firstName,
+  "lastName": lastName,
+  "ldapType": ldapType,
+  "name": name,
+  "roles": [
+    {
+      "allApplicationRole": False,
+      "assignedToNonUsers": False,
+      "builtIn": False,
+      "default": True,
+      "deletable": True,
+      "description": role_description,
+      "id": role_id,
+      "name": role,
+      "objectVersion": objectVersion,
+      "permissionIds": ["string"
+      ],
+      "publishVersion": publishVersion,
+      "userOnly": False
+    }
+  ]
+}
+        url = "/api/v1/ldapObjects/" + str(user_id)
+        return self._request('PUT', url, json=data)
+    
+    def get_unregistered_user(self, filter_string):
+        data = {
+  "filter": filter_string,
+  "ldapType": "USER",
+  "limit": 0,
+  "start": 0
+  }
+        url = "/api/v1/ldapObjects/action/searchUnregistered"
+        return self._request('POST', url, json = data)
+    
+    def get_roles_list(self):
+        url = "/api/v1/roles?start=0&limit=200&excludeuseronly=false"
+        return self._request('GET', url)
+   
     def get_all_auth_entities(self):
         """
         Manage aggregated list of authentication entities (local and LDAP user accounts). LDAP groups can be accessed
