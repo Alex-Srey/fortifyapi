@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 __author__ = "Brandon Spruth (brandon@spruth.co)"
-__contributors__ = ["Brandon Spruth"]
+__contributors__ = ["Brandon Spruth", "Alex Srey"]
 __status__ = "Production"
 __license__ = "MIT"
 
@@ -466,12 +466,11 @@ class FortifyApi(object):
         return self._request('GET', url)
     
     #TODO: deprecate
-    def get_projects(self):
+    def get_projects(self, query):
         """
         :return: A response object with data containing projects
         """
-
-        url = "/api/v1/projects?start=-1&limit=-1"
+        url = "/api/v1/projects?start=0&limit=200&q=" + str(query) + "&fulltextsearch=true"
         return self._request('GET', url)
 
     def get_token(self, description, type='UnifiedLoginToken'):
@@ -786,6 +785,16 @@ class FortifyApi(object):
         url = "/api/v1/ldapObjects/" + str(user_id)
         return self._request('PUT', url, json=data)
     
+    def add_project_version(self, user_id, project_version_id):
+        data = {
+  "projectVersionIds": [
+    project_version_id
+  ]
+}
+
+        url = "/api/v1/authEntities/" + str(user_id) + "/projectVersions/action/assign"
+        return self._request('POST', url,  json=data)
+        
     def get_unregistered_user(self, filter_string):
         data = {
   "filter": filter_string,
