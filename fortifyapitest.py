@@ -1,5 +1,6 @@
 import requests
 import json
+import collections
 from os import environ
 from locale import LC_ALL, setlocale
 from fortifyapi.fortify import FortifyApi
@@ -36,10 +37,9 @@ def list():
      response = api().get_all_project_versions()
      data = response.data['data']
      for version in data:
-         print("{0:8} {1:30} {2:30}".format(version['id'], version['project']['name'], version['name']).encode(
+         print("{0:8} project versionid {1:30} {2:30}".format(version['id'], version['project']['name'], version['name']).encode(
              'utf-8', errors='ignore').decode())
-             
- # Deletes user via a DELETE request
+
 def delete_user():
     query = input("Enter the username or email to be deleted (Ex: asrey): " )
     user_id_response = api().get_ldap_user(query)
@@ -83,13 +83,96 @@ def get_unregistered_user():
     response = api().get_unregistered_user("")
     print(response.message)
 
-# Updates LDAP user to a new role 
-def update_ldap_user():
+def update_ldap_version():
+    
+    while True:
+        query = input("Enter the username or email (Ex: asrey): ")
+        if(query == ''):
+            print("Error! Empty string detected. Please retry.")
+            exit()
+            
+        user_data_response = api().get_ldap_user(query)
+        
+        if(user_data_response.data['count'] == 1):
+            userId = user_data_response.data['data'][0]['id']
+            break
+        
+        elif(user_data_response.data['count'] > 1):
+        #If non-unique information is passed in the user is prompted with all the found users and asked to try again
+            count = 0
+            multiple_user_response = user_data_response.data['data']
+            print("These users were found: ")
+            for names in multiple_user_response:
+                print(user_data_response.data['data'][count]['name'] + 
+                " (" + user_data_response.data['data'][count]['firstName'] + " " 
+                + user_data_response.data['data'][count]['lastName'] +")" ) 
+                count+=1
+            print("Please retry and enter the unique Deloitte ID or email.")
+            
+        
+        else:
+            print("An error occurred, the user could not be found. Please retry with the correct Deloitte credentials")
+            #exit()
+    
+    while True:
+        application_name = input("Enter Application Name (Ex: AU-AA): ")
+        project_name = api().get_project_versions(application_name)
+     
+        if(application_name == 'exit'):
+            exit()
+            
+        if(project_name.data['count'] == 0):
+            project_list = api().get_projects(application_name)
+            print("Error! Specific project could not be found.")
+            
+            idx = 0
+            project_names_list = project_list.data['data']
+            for names in project_names_list:
+                print(project_list.data['data'][idx]['name'])
+                idx+=1
+                
+            print("Please view the search results and try entering the application name again.")
+       
+        else:
+            count = 1
+            idx = 0
+            multiple_project_response = project_name.data['data']
+            print("These project versions were found: ")
+            select_dict = {}
+            for names in multiple_project_response:
+                select_dict.update({count: project_name.data['data'][idx]['currentState']['id']})
+                print(str(count) + ". " + project_name.data['data'][idx]['name'])
+                count+=1
+                idx+=1
+            break
+        
+    while True:
+        version_choice =  input("Please select the number associated with the desired project version: ")
+        
+        if(version_choice == ''):
+            print("Invalid choice. Please try again.")
+        else:
+            version_choice = int(version_choice)
+            if(version_choice not in select_dict):
+                print("Invalid choice. Please try again.")
+            else:
+                add_version = api().add_project_version(userId, select_dict.get(version_choice))
+                print("Success! Please ensure the change has been made on SSC.")
+                break
+                
+def update_ldap_user_role():
 # Prompts the user for username and desired new role
     query = input("Enter the username or email (Ex: asrey): ")
     newRole = input("Enter the new role (Ex: MF Developer): ")
+    
+ 
+    if(query == ''):
+        print("Error! Empty string detected. Please retry.")
+        exit()
+        
     new_role_id = -1
     user_data_response = api().get_ldap_user(query)
+    
     if(user_data_response.success == False):
         print("An error occurred. Please ensure the userId is correct.")
         exit()
@@ -129,7 +212,7 @@ def update_ldap_user():
   
   #Finds the role id associated with the role name passed in
     for names in role_data:
-        if(names['name'] == newRole):
+        if(names['name'].lower() == newRole.lower()):
            new_role_id = names['id']
            break
            
@@ -155,6 +238,11 @@ def update_ldap_user():
 def delete_all_tokens():
     response = api().delete_all_user_tokens()
     print(response.message)
+    
+    
+def get_project_versions():
+    response = api().get_all_project_versions()
+    print(response.data_json(pretty = True))
 
 def create_ldap_user():
     response = api().set_ldap_user("CN=Mitchell\\, Alex [alemitchell],OU=Users,OU=Adelaide,OU=SA,OU=State,OU=Production,DC=au,DC=deloitte,DC=com", "")
@@ -165,12 +253,16 @@ if __name__ == '__main__':
      print("Please press the associated number for the desired action: \n")
      print("1. Update an LDAP User role\n")
      print("2. Delete a LDAP User\n")
+     print("3. Add a project version to a LDAP User")
      query = input()
      
      if(query == "1"):
-        update_ldap_user()
+        update_ldap_user_role()
      elif(query == "2"):
         delete_user()
+     elif(query == "3"):
+        update_ldap_version()
      else:
         print("Please try again with a valid choice.")
-      
+     
+    
