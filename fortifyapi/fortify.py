@@ -558,6 +558,7 @@ class FortifyApi(object):
         :return:
         """
         url = "/api/v1/tokens/" + str(token_id)
+        print(url)
         return self._request('DELETE', url)
 
     def delete_all_user_tokens(self):
@@ -565,7 +566,7 @@ class FortifyApi(object):
         Delete all tokens by user from the auth-token-controller
         :return:
         """
-        url = "/api/v1/tokens/" + "?all=true"
+        url = "/api/v1/tokens" + "?all=true"
         return self._request('DELETE', url)
 
     def get_all_tokens(self):
@@ -679,7 +680,11 @@ class FortifyApi(object):
         }
         url = '/api/v1/cloudpools'
         return self._request('POST', url, json=data)
-
+    
+    def get_ldap_user_versions(self, user_id):
+        url = '/api/v1/authEntities/' + str(user_id) + '/projectVersions?start=0&limit=200'
+        return self._request('GET', url)
+        
     def set_cloud_worker(self, worker_uuid, pool_id):
         """
         Assignes a cloudscan worker to a pool
@@ -727,7 +732,7 @@ class FortifyApi(object):
         return self._request('GET', url)
         
     def add_ldap_user(self, distinguishedName, email, firstName, lastName, 
-    ldapType, name, role_description, role_id, role, objectVersion, publishVersion):
+    ldapType, name, role_description, role_id, role_name):
         data = {
   "distinguishedName": distinguishedName,
   "email": email,
@@ -744,15 +749,15 @@ class FortifyApi(object):
       "deletable": True,
       "description": role_description,
       "id": role_id,
-      "name": role,
-      "objectVersion": objectVersion,
-      "permissionIds": ["string"
-      ],
-      "publishVersion": publishVersion,
+      "name": role_name,
+      "objectVersion": 0,
+      "permissionIds": [],
+      "publishVersion": 0,
       "userOnly": False
     }
   ]
 }
+        url = "/api/v1/ldapObjects/"
         return self._request('POST', url, json = data)
         
     def update_ldap_user_role(self, user_id, distinguishedName, email, firstName, lastName, 
@@ -784,6 +789,8 @@ class FortifyApi(object):
 }
         url = "/api/v1/ldapObjects/" + str(user_id)
         return self._request('PUT', url, json=data)
+        
+        
     
     def add_project_version(self, user_id, project_version_id):
         data = {
@@ -799,7 +806,7 @@ class FortifyApi(object):
         data = {
   "filter": filter_string,
   "ldapType": "USER",
-  "limit": 0,
+  "limit": 200,
   "start": 0
   }
         url = "/api/v1/ldapObjects/action/searchUnregistered"
