@@ -60,12 +60,12 @@ def api_delete_token():
     return delete_token_api
     
  # List ID, Project/application Version
-def list():
-     response = api().get_all_project_versions()
-     data = response.data['data']
-     for version in data:
-         print("{0:8} project versionid {1:30} {2:30}".format(version['id'], version['project']['name'], version['name']).encode(
-             'utf-8', errors='ignore').decode())
+#def list():
+     #response = api().get_all_project_versions()
+     #data = response.data['data']
+     #for version in data:
+         #print("{0:8} project versionid {1:30} {2:30}".format(version['id'], version['project']['name'], version['name']).encode(
+             #'utf-8', errors='ignore').decode())
              
 #Deletes an individual token based on tokenId
 def delete_token():
@@ -94,6 +94,7 @@ def delete_user():
         firstName = user_id_response.data['data'][0]['firstName']
         lastName = user_id_response.data['data'][0]['lastName']
         userId = user_id_response.data['data'][0]['id']
+        print(userId)
         name = user_id_response.data['data'][0]['name']
         role_name = user_id_response.data['data'][0]['roles'][0]['name']
         
@@ -135,9 +136,15 @@ def delete_user():
         main()
    
 #Adds LDAP user
-def add_ldap_user():
+def adds_ldap_user():
     #Prompts user for Deloitte ID and desired role
     query = input("Enter the username or email (Ex: asrey): ")
+    role_list = api().get_roles_list()
+    role_data = role_list.data['data']
+    role_count = 1
+    for names in role_data:
+        print(str(role_count) + ". " + names['name'])
+        role_count += 1
     newRole = input("Enter the new role (Ex: MF Developer): ")
     
     if(query == ''):
@@ -234,6 +241,17 @@ def update_ldap_version():
             print("User found: " + name + " " + "(" + firstName + ", " + lastName + ")")
             print("Current role: " + role_name)
             userId = user_data_response.data['data'][0]['id']
+            response = api().get_ldap_user_versions(userId)
+            idx = 0
+            project_names_list = response.data['data']
+             
+            #print(response.data_json(pretty = True))
+            #print(project_names_list)
+            print("Current Versions:")
+            for names in project_names_list:
+                print(response.data['data'][idx]['project']['name'] + " - " + response.data['data'][idx]['name'])
+                idx+=1
+            print("\n")
             break
         
         elif(user_data_response.data['count'] > 1):
@@ -286,12 +304,15 @@ def update_ldap_version():
                 print(str(count) + ". " + project_name.data['data'][idx]['name'])
                 count+=1
                 idx+=1
+            print(str(count) +". " + "Provision access to all listed application versions.")
             break
             
             if(count == 1):
                 print("No applications could be found.")
         
     while True:
+        
+        all_access = count
     #Prompts user to choose a project version
         version_choice =  input("Please select the number associated with the desired project version: ")
         
@@ -306,12 +327,164 @@ def update_ldap_version():
             except ValueError:
                 print("Not a valid integer. Please try again.")
                 
-            if(version_choice not in select_dict):
+            if((version_choice not in select_dict) and (all_access is not version_choice)):
                 print("Invalid choice. Please try again.")
             else:
-                add_version = api().add_project_version(userId, select_dict.get(version_choice))
-                print("Success! Please ensure the change has been made on SSC.")
-                main()
+                if(version_choice == all_access):
+                    
+                    for versions in select_dict:
+                        add_version = api().add_project_version(userId, select_dict.get(versions))
+                        
+                    print("All associated versions have been added! Please verify the changes on FortifySSC.")
+                else:
+                    add_version = api().add_project_version(userId, select_dict.get(version_choice))
+                    print("Success! Please ensure the change has been made on SSC.")
+                while True:
+                    print("Would you like to provision access to another version?")
+                    print("1. Yes")
+                    print("2. No")
+                    choice = input()
+                    if(choice == "1"):
+                        update_ldap_version_again(name)
+                    elif(choice == "2"):
+                        print("Returning you to the main menu...")
+                        main()
+                    else:
+                        print("Invalid choice. Please try again.")
+    
+def update_ldap_version_again(name):
+    
+    while True:
+ 
+        user_data_response = api().get_ldap_user(name)
+        #If only one user is found, userId of that user is stored
+        if(user_data_response.data['count'] == 1):
+            firstName = user_data_response.data['data'][0]['firstName']
+            lastName = user_data_response.data['data'][0]['lastName']
+            role_name = user_data_response.data['data'][0]['roles'][0]['name']
+            name = user_data_response.data['data'][0]['name']
+            userId = user_data_response.data['data'][0]['id']
+            print("User found: " + name + " " + "(" + firstName + ", " + lastName + ")")
+            print("Current role: " + role_name)
+            response = api().get_ldap_user_versions(userId)
+            idx = 0
+            project_names_list = response.data['data']
+             
+            #print(response.data_json(pretty = True))
+            #print(project_names_list)
+            print("Current Versions:")
+            for names in project_names_list:
+                print(response.data['data'][idx]['project']['name'] + " - " + response.data['data'][idx]['name'])
+                idx+=1
+            print("\n")
+            break
+       
+         
+       
+            
+        elif(user_data_response.data['count'] > 1):
+        #If non-unique information is passed in the user is prompted with all the found users and asked to try again
+            count = 0
+            multiple_user_response = user_data_response.data['data']
+            print("These users were found: ")
+            for names in multiple_user_response:
+                print(user_data_response.data['data'][count]['name'] + 
+                " (" + user_data_response.data['data'][count]['firstName'] + " " 
+                + user_data_response.data['data'][count]['lastName'] +")" ) 
+                count+=1
+            print("Please retry and enter the unique Deloitte ID or email.")
+            
+        else:
+            print("An error occurred, the user could not be found. Please retry with the correct Deloitte credentials")    
+            main()
+        
+            
+        
+    
+    while True:
+    #Prompts user for desired Application Name
+        application_name = input("Enter Application Name (Ex: AU-AA): ")
+        #Typing quit allows the user to return to the main menu
+        if(application_name == 'quit'):
+            print("Returning to the main menu...")
+            main()
+        project_name = api().get_project_versions(application_name)
+        
+        #If project could not be found, user is prompted to try again
+        if(project_name.data['count'] == 0):
+            project_list = api().get_projects(application_name)
+            print("Error! Specific project could not be found or application does not have any active versions.")
+        #Prints all the found applications based on the users query    
+            idx = 0
+            project_names_list = project_list.data['data']
+            for names in project_names_list:
+                print(project_list.data['data'][idx]['name'])
+                idx+=1
+                
+            print("Please view the search results and try entering the application name again.")
+       
+        else:
+            
+            count = 1
+            idx = 0
+            multiple_project_response = project_name.data['data']
+            #Finds and prints the versions associated with the application
+            print("These project versions were found: ")
+            select_dict = {}
+            for names in multiple_project_response:
+                select_dict.update({count: project_name.data['data'][idx]['currentState']['id']})
+                print(str(count) + ". " + project_name.data['data'][idx]['name'])
+                count+=1
+                idx+=1
+            print(str(count) +". " + "Provision access to all listed application versions.")
+            break
+            
+            
+            if(count == 1):
+                print("No applications could be found.")
+        
+    while True:
+    
+        all_access = count
+    #Prompts user to choose a project version
+        version_choice =  input("Please select the number associated with the desired project version: ")
+        
+        if(version_choice == ''):
+            print("Invalid choice. Please try again.")
+        elif(version_choice == 'quit'):
+            print("Returning to main menu...")
+            main()
+        else:
+            try:
+                version_choice = int(version_choice)
+            except ValueError:
+                print("Not a valid integer. Please try again.")
+               
+            if((version_choice not in select_dict) and (all_access is not version_choice)):
+                print("Invalid choice. Please try again.")
+            else:
+                if(version_choice == all_access):
+                    for versions in select_dict:
+                        add_version = api().add_project_version(userId, select_dict.get(versions))
+                        
+                    print("All associated versions have been added! Please verify the changes on FortifySSC.")
+                else:
+                    add_version = api().add_project_version(userId, select_dict.get(version_choice))
+                    print("Success! Please ensure the change has been made on SSC.")
+                while True:
+                    print("Would you like to provision access to another version?")
+                    print("1. Yes")
+                    print("2. No")
+                    choice = input()
+                    if(choice == "1"):
+                        update_ldap_version_again(name)
+                    elif(choice == "2"):
+                        print("Returning you to the main menu...")
+                        main()
+                    else:
+                        print("Invalid choice. Please try again.")
+        
+                
                 
 def update_ldap_user_role():
 # Prompts the user for username and desired new role
@@ -328,6 +501,7 @@ def update_ldap_user_role():
     user_data_response = api().get_ldap_user(query)
     
     if(user_data_response.success == False):
+        print(user_data_response)
         print("An error occurred. Please ensure the userId is correct.")
         main()
     
@@ -347,7 +521,14 @@ def update_ldap_user_role():
         
         print("User found: " + name + " " + "(" + firstName + ", " + lastName + ")")
         print("Current role: " + role_name)
-        
+         
+        role_list = api().get_roles_list()
+        role_data = role_list.data['data']
+   
+        role_count = 1
+        for names in role_data:
+            print(str(role_count) + ". " + names['name'])
+            role_count += 1
         newRole = input("Enter the new role (Ex: MF Developer): ")
         
         if(newRole == 'quit'):
@@ -405,7 +586,204 @@ def get_project_versions():
 def create_ldap_user():
     response = api().set_ldap_user("CN=Mitchell\\, Alex [alemitchell],OU=Users,OU=Adelaide,OU=SA,OU=State,OU=Production,DC=au,DC=deloitte,DC=com", "")
     print(response.data_json(pretty = True))
+
+def write_json(new_data, filename='data.json'):
+    with open(filename,'r+') as file:
+          # First we load existing data into a dict.
+        file_data = json.load(file)
+        # Join new_data with file_data inside emp_details
+        # Sets file's current position at offset.
+        file.seek(0)
+        # convert back to json.
+        json.dump(file_data, file, indent = 4)
+ 
+    # python object to be appended
+y = { "requests": [
+        {
+            "uri": "https://vigilantshieldazure.deloittecyber.net/ssc/api/v1/ldapObjects",
+            "httpVerb": "POST",
+            "postData": {
+			"distinguishedName": "CN=Daraz\\, Robert [rdaraz],OU=Users,OU=DTCE,DC=atrema,DC=deloitte,DC=com",
+  "email": "rdaraz@deloittece.com",
+  "firstName": "Robert",      
+  "assignedToNonUsers": False,
+  "lastName": "Daraz",
+  "ldapType": "USER",
+  "name": "rdaraz",
+  "roles": [
+    {
+      "allApplicationRole": False,
+      "builtIn": False,
+      "default": True,
+      "deletable": True,
+      "description": "string",
+      "id": "5997343b-7e81-4048-bd05-8fa0ed545a46",
+      "name": "string",
+      "objectVersion": 8,
+      "permissionIds": [
+        "string"
+      ],
+      "publishVersion": 1,
+      "userOnly": False
+    }
+  ]
+  }
+  }
+  ]
+    }
+     
+        #write_json(y) 
+  
+def add_multiple_users():
     
+    user_input = list(map(str, input("Enter multiple Deloitte users separated by spaces (Ex: asrey abacon abhinmishra): ").split()))
+    if(len(user_input) == 0):
+        print("Empty string detected. Please try again.")
+        main()
+    user_idx = 0
+    for users in user_input:
+        user_data_response = api().get_unregistered_user(user_input[user_idx])
+        user_idx += 1
+        #print(user_data_response.data_json(pretty = True))
+        if(user_data_response.data['count'] == 0):
+            print("One or more of the Deloitte ID's is incorrect. Please retry and ensure that each credential is correct.")
+            main()
+        elif(user_data_response.data['count'] > 1):
+            print("One or more of the Deloitte ID's was not unique. Please retry.")
+            main()
+        #elif(user_data_response.data['count'] == 1):
+            #distinguishedName = user_data_response.data['data'][0]['distinguishedName']
+            #userId = user_data_response.data['data'][0]['id']
+            #email = user_data_response.data['data'][0]['email']
+            #firstName = user_data_response.data['data'][0]['firstName']
+            #lastName = user_data_response.data['data'][0]['lastName']
+            #ldapType = user_data_response.data['data'][0]['ldapType']
+            #name = user_data_response.data['data'][0]['name']
+        #else:
+            #print("A unique match for each Deloitte ID that does not already exists could not be found. Please retry.")
+            #main()
+        
+    role_input = []
+    role_list = api().get_roles_list()
+    role_data = role_list.data['data']
+   
+    role_count = 1
+    for names in role_data:
+        print(str(role_count) + ". " + names['name'])
+        role_count += 1
+        
+    
+    for username in user_input:
+        count = 1
+        idx = 0
+        
+        select_dict = {}
+        for roles in role_data:   
+            #multiple_project_response = role_list.data['data']
+            #Finds and prints the versions associated with the application
+            #for names in multiple_project_response:
+            select_dict.update({count: role_list.data['data'][idx]['name']})
+            #print(select_dict)
+            #print(str(count) + ". " + role_list.data['data'][idx]['name'])
+            count+=1
+            idx+=1
+         #break
+        while True:
+            role_choice =  input("Please select the number associated with the desired role for " + username + ":")
+       
+            if(role_choice == ''):
+                print("Invalid choice. Please try again.")
+            elif(role_choice == 'quit'):
+                print("Returning to main menu...")
+                main()
+            #elif(role_choice not in select_dict):
+                #print("Invalid choice. Please try again.")    
+            else:
+                try:
+                    role_choice = int(role_choice)
+                except ValueError:
+                    print("Not a valid integer. Please try again.")
+                    
+                role_input.append(select_dict.get(role_choice))
+                #print(role_input)
+                break
+            
+    #print ("Original key list is : " + str(user_input))
+    #print ("Original value list is : " + str(role_input))
+  
+# using zip()
+# to convert lists to dictionary
+    res_dict = dict(zip(user_input, role_input))
+  
+# Printing resultant dictionary 
+    #print ("Resultant dictionary is : " +  str(res_dict))           
+                
+    role_id = -1
+   
+    roles_response =  api().get_roles_list()
+    role_data = roles_response.data['data']
+    user_idx = 0
+    
+    for names in res_dict:
+        user_data_response = api().get_unregistered_user(user_input[user_idx])
+  #Finds the role id associated with the role name passed 
+        
+        if(user_data_response.data['count'] == 1):
+    #Stores all the necessary variables for the updated json object
+                distinguishedName = user_data_response.data['data'][0]['distinguishedName']
+                #print(distinguishedName)
+                userId = user_data_response.data['data'][0]['id']
+                #print(userId)
+                email = user_data_response.data['data'][0]['email']
+                #print(email)
+                firstName = user_data_response.data['data'][0]['firstName']
+                #print(firstName)
+                lastName = user_data_response.data['data'][0]['lastName']
+                #print(lastName)
+                ldapType = user_data_response.data['data'][0]['ldapType']
+                #print(ldapType)
+                name = user_data_response.data['data'][0]['name']
+                #print(name)
+        
+                print("User found: " + name + " " + "(" + firstName + ", " + lastName + ")")
+               
+                user_idx += 1
+                
+        elif(user_data_response.data['count'] > 1):
+        #If non-unique information is passed in the user is prompted with all the found users and asked to try again
+            count = 0
+            multiple_user_response = user_data_response.data['data']
+            print("These users were found: ")
+            for names in multiple_user_response:
+                print(user_data_response.data['data'][count]['name'] + 
+                " (" + user_data_response.data['data'][count]['firstName'] + " " 
+                + user_data_response.data['data'][count]['lastName'] +")" ) 
+                count+=1
+            print("Please retry and enter the unique Deloitte ID or email.")
+            
+        else:
+            print("An error occurred, the user could not be found. Please retry with the correct Deloitte credentials")
+            
+        for role_name in role_data:
+            #print(role_name['name'])
+            #print(res_dict.get(names))
+            if(role_name['name'] == res_dict.get(names)):
+                role_id = role_name['id']
+                #print(role_id)
+                rolename = role_name['name']
+                #print(rolename)
+                role_description = role_name['description']
+                #print(role_description)
+                break        
+        final_response = api().add_ldap_user(distinguishedName, email, firstName, lastName, 
+    ldapType, name, role_description, role_id, rolename)
+       
+        #print(final_response)
+       
+        print("Success! " + name + " has been added to the LDAP user database.")
+    
+    print("Please ensure the users have been added on SSC.")
+    main()
 def get_ldap_user_project_versions():
     while True:
         query = input("Enter the username or email (Ex: asrey): ")
@@ -430,8 +808,11 @@ def get_ldap_user_project_versions():
             response = api().get_ldap_user_versions(userId)
             idx = 0
             project_names_list = response.data['data']
+             
+            #print(response.data_json(pretty = True))
+            #print(project_names_list)
             for names in project_names_list:
-                print(response.data['data'][idx]['name'])
+                print(response.data['data'][idx]['project']['name'] + " - " + response.data['data'][idx]['name'])
                 idx+=1
             print("\n")
             
@@ -466,7 +847,9 @@ def main():
         print("3. Add a project version to a LDAP User\n")
         print("4. Look up the project versions associated with a LDAP User\n")
         print("5. Add a LDAP User\n")
-        print("6. Quit and delete token")
+        print("6. Quit and delete token\n")
+        print("7. Add multiple LDAP Users\n")
+        
         query = input()
      
         if(query == "1"):
@@ -478,10 +861,12 @@ def main():
         elif(query == "4"):
             get_ldap_user_project_versions()
         elif(query == "5"):
-            add_ldap_user()
+            adds_ldap_user()
         elif(query == "6"):
             delete_all_tokens()
             exit()
+        elif(query == "7"):
+            add_multiple_users()
         else:
             print("Please try again with a valid choice.")
             main()
