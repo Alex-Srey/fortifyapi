@@ -66,6 +66,8 @@ class FortifyApi(object):
                                                                  custom_attributes=custom_attributes)
         url = '/api/v1/bulk'
         return self._request('POST', url, data=data)
+        
+    
 
     @staticmethod
     def _bulk_format_attribute_definition(attribute_definition_id_value, guid_value='', value='null'):
@@ -144,6 +146,9 @@ class FortifyApi(object):
                                         )]
                                         )
         return json_application_version
+        
+    def _bulk_create_users(self, data):
+        json_application_version = dict(uri=self.host + '/api/v1/ldapObjects')
 
     def _bulk_create_commit(self, version_id):
         json_application_version = dict(
@@ -155,6 +160,20 @@ class FortifyApi(object):
         )
         return json_application_version
 
+    def _bulk_create_version(self, version_id):
+        json_application_version = dict(uri=self.host + '/api/v1/projectVersions/' + str(version_id) + '/action',
+                                        httpVerb='POST',
+                                        postData=[dict(
+                                            type='COPY_CURRENT_STATE',
+                                            values={
+                                                "projectVersionId": str(version_id),
+                                                "previousProjectVersionId": '-1',
+                                                "copyCurrentStateFpr": 'false'
+                                            }
+                                        )]
+                                        )
+        return json_application_version
+        
     def _bulk_create_version(self, version_id):
         json_application_version = dict(uri=self.host + '/api/v1/projectVersions/' + str(version_id) + '/action',
                                         httpVerb='POST',
@@ -435,11 +454,12 @@ class FortifyApi(object):
         url = '/api/v1/projectVersions/' + str(project_version_id) + '/attributes/?start=-1&limit=-1'
         return self._request('GET', url)
 
+    
     def get_all_project_versions(self):
         """
         :return: A response object with data containing project versions
         """
-        url = "/api/v1/projectVersions?start=-1&limit=-1"
+        url = "/api/v1/projectVersions?start=0&limit=0&fulltextsearch=false&includeInactive=false&myAssignedIssues=false&onlyIfHasIssues=false"
         return self._request('GET', url)
 
     def get_project_version(self, version_id):
@@ -730,6 +750,7 @@ class FortifyApi(object):
     def get_ldap_user_from_id(self, id):
         url = "/api/v1/ldapObjects/" + str(id)
         return self._request('GET', url)
+    
         
     def add_ldap_user(self, distinguishedName, email, firstName, lastName, 
     ldapType, name, role_description, role_id, role_name):
@@ -759,7 +780,103 @@ class FortifyApi(object):
 }
         url = "/api/v1/ldapObjects/"
         return self._request('POST', url, json = data)
-        
+            
+    
+    def create_multi_user_json(self, distinguishedName, email, firstName, lastName, 
+        ldapType, name, role_description, role_id, role_name):
+        data = {
+            "distinguishedName": distinguishedName,
+            "email": email,
+            "firstName": firstName,
+            "lastName": lastName,
+            "ldapType": ldapType,
+            "name": name,
+            "roles": [
+                        {
+                            "allApplicationRole": False,
+                            "assignedToNonUsers": False,
+                            "builtIn": False,
+                            "default": True,
+                            "deletable": True,
+                            "description": role_description,
+                            "id": role_id,
+                            "name": role_name,
+                            "objectVersion": 0,
+                            "permissionIds": [],
+                            "publishVersion": 0,
+                            "userOnly": False
+                        }
+                    ]
+                }  
+            #return data
+    
+    def add_multiple_user(name_role_dict):
+        data =  {
+    "requests": [
+        {
+            "uri": "https://vigilantshieldazure.deloittecyber.net/ssc/api/v1/ldapObjects",
+            "httpVerb": "POST",
+            "postData": {
+			"distinguishedName": "CN=Daraz\\, Robert [rdaraz],OU=Users,OU=DTCE,DC=atrema,DC=deloitte,DC=com",
+  "email": "rdaraz@deloittece.com",
+  "firstName": "Robert",
+  "lastName": "Daraz",
+  "ldapType": "USER",
+  "name": "rdaraz",
+  "roles": [
+    {
+      "allApplicationRole": false,
+      "assignedToNonUsers": false,
+      "builtIn": false,
+      "default": true,
+      "deletable": true,
+      "description": "string",
+"id": "5997343b-7e81-4048-bd05-8fa0ed545a46",
+      "name": "string",
+      "objectVersion": 8,
+      "permissionIds": [
+        "string"
+      ],
+      "publishVersion": 1,
+      "userOnly": false
+    }
+  ]
+  }
+  },
+  {
+     "uri": "https://vigilantshieldazure.deloittecyber.net/ssc/api/v1/ldapObjects",
+     "httpVerb": "POST",
+     "postData": {
+	 "distinguishedName": "CN=aantidius,OU=Users,OU=Practice Office,DC=us,DC=deloitte,DC=com",
+  "email": "aantidius@deloitte.com",
+  "firstName": "Alex",
+  "lastName": "Antidius",
+  "ldapType": "USER",
+  "name": "aantidus",
+  "roles": [
+    {
+      "allApplicationRole": false,
+      "assignedToNonUsers": false,
+      "builtIn": false,
+      "default": true,
+      "deletable": true,
+      "description": "string",
+"id": "5997343b-7e81-4048-bd05-8fa0ed545a46",
+      "name": "string",
+      "objectVersion": 8,
+      "permissionIds": [
+        "string"
+      ],
+      "publishVersion": 1,
+      "userOnly": false
+    }
+	]
+	}
+  }
+  ]
+}   
+
+
     def update_ldap_user_role(self, user_id, distinguishedName, email, firstName, lastName, 
     ldapType, name, role_description, role_id, role, objectVersion, publishVersion):
         data = {
