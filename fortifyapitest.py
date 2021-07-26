@@ -7,6 +7,7 @@ import collections
 from os import environ
 from locale import LC_ALL, setlocale
 from fortifyapi.fortify import FortifyApi
+from sys import exit
 
 #Loads settings for authentication from "settings.json"
 print("Reading settings file...")
@@ -142,13 +143,19 @@ def adds_ldap_user():
     role_list = api().get_roles_list()
     role_data = role_list.data['data']
     role_count = 1
+    if(query == ''):
+        print("Error! Empty string detected. Please retry.")
+        main()
+    if(query == 'quit'):
+        print("Returning to the main menu...")
+        main()
     for names in role_data:
         print(str(role_count) + ". " + names['name'])
         role_count += 1
     newRole = input("Enter the new role (Ex: MF Developer): ")
     
-    if(query == ''):
-        print("Error! Empty string detected. Please retry.")
+    if(newRole == 'quit'):
+        print("Returning to the main menu...")
         main()
         
     role_id = -1
