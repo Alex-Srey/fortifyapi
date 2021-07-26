@@ -34,7 +34,7 @@ def token_creation():
         print("Incorrect credentials, please try again.")
         exit()
      else:
-        tokenId = response.data['data']['id']
+        #tokenId = response.data['data']['id']
         return [response.data['data']['token'], response.data['data']['id']]
 
 
@@ -44,8 +44,9 @@ url = settings['SSC_URL']
 user = username
 password = password
 description = settings['description']
-token = token_creation()[0]
-tokenId = token_creation()[1]
+token_dict = token_creation()
+token = token_dict[0]
+tokenId = token_dict[1]
 
 
 
@@ -58,6 +59,7 @@ def api():
 # Creates a api object with basic authentication to be used for deleting tokens associated with the user     
 def api_delete_token():
     delete_token_api = FortifyApi(host=url, username=username, password=password, verify_ssl=False)
+   
     return delete_token_api
     
  # List ID, Project/application Version
@@ -69,10 +71,13 @@ def api_delete_token():
              #'utf-8', errors='ignore').decode())
              
 #Deletes an individual token based on tokenId
-def delete_token():
-    print("here" + str(tokenId)) 
-    response = api_delete_token().delete_token(tokenId)
-    print(response.message)
+def delete_singular_token(token_Id):
+    delete_response = api_delete_token().delete_token(token_Id)
+    if(delete_response.message == 'OK'):
+        print("Token has been deleted.")
+    else:
+        print("There was an error. Please check FortifySSC to ensure the token has been deleted")
+    
 
 #Deletes an LDAP user
 def delete_user():
@@ -870,7 +875,7 @@ def main():
         elif(query == "5"):
             adds_ldap_user()
         elif(query == "6"):
-            delete_all_tokens()
+            delete_singular_token(tokenId)
             exit()
         elif(query == "7"):
             add_multiple_users()
