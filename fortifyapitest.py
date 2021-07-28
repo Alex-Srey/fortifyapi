@@ -945,7 +945,7 @@ def provision_access_all(project_dict, userId):
         project_name = api().get_project_versions(project_dict.get(project))
         multiple_project_response = project_name.data['data']
         #Finds and prints the versions associated with the application
-        print("Application: " + project_dict.get(project) + "\n")
+        print("\nApplication: " + project_dict.get(project) + "\n")
         print("These project versions were found: ")
         select_dict = {}
         for names in multiple_project_response:
@@ -963,8 +963,8 @@ def provision_access_all(project_dict, userId):
             else:
                 print("Error! " + versions + " could not be added.")
                 
-        print("All associated projects have been added. Returning to main menu...")
-        main()
+    print("\nAll associated projects have been added. Returning to main menu...")
+    main()
         
 def main():
     
