@@ -76,7 +76,7 @@ def delete_singular_token(token_Id):
     if(delete_response.message == 'OK'):
         print("Token has been deleted.")
     else:
-        print("There was an error. Please check FortifySSC to ensure the token has been deleted")
+        print("There was an error. Please check FortifySSC to ensure the token has been deleted.")
     
 
 #Deletes an LDAP user
@@ -849,7 +849,123 @@ def get_ldap_user_project_versions():
             print("An error occurred, the user could not be found. Please retry with the correct Deloitte credentials")
                  
     main()
-
+def update_ldap_version_firm_level():
+    
+    while True:
+        query = input("Enter the username or email (Ex: asrey): ")
+        if(query == ''):
+            print("Error! Empty string detected. Please retry.")
+            main()
+        if(query == 'quit'):
+            main()
+        user_data_response = api().get_ldap_user(query)
+        #If only one user is found, userId of that user is stored
+        if(user_data_response.data['count'] == 1):
+            firstName = user_data_response.data['data'][0]['firstName']
+            lastName = user_data_response.data['data'][0]['lastName']
+            role_name = user_data_response.data['data'][0]['roles'][0]['name']
+            name = user_data_response.data['data'][0]['name']
+            if(firstName is not None):
+                print("User found: " + name + " " + "(" + firstName + ", " + lastName + ")")
+                
+            print("Current role: " + role_name)
+            userId = user_data_response.data['data'][0]['id']
+            response = api().get_ldap_user_versions(userId)
+            idx = 0
+            project_names_list = response.data['data']
+             
+            #print(response.data_json(pretty = True))
+            #print(project_names_list)
+            print("Current Versions:")
+            for names in project_names_list:
+                print(response.data['data'][idx]['project']['name'] + " - " + response.data['data'][idx]['name'])
+                idx+=1
+            print("\n")
+            break
+        
+        elif(user_data_response.data['count'] > 1):
+        #If non-unique information is passed in the user is prompted with all the found users and asked to try again
+            count = 0
+            multiple_user_response = user_data_response.data['data']
+            print("These users were found: ")
+            for names in multiple_user_response:
+                print(user_data_response.data['data'][count]['name'] + 
+                " (" + user_data_response.data['data'][count]['firstName'] + " " 
+                + user_data_response.data['data'][count]['lastName'] +")" ) 
+                count+=1
+            print("Please retry and enter the unique Deloitte ID or email.")
+            
+        else:
+            print("An error occurred, the user could not be found. Please retry with the correct Deloitte credentials.")
+          
+    
+    while True:
+    #Prompts user for desired Application Name
+        application_name = input("Enter Application Header (Ex: AU, US, KR): ")
+        #Typing quit allows the user to return to the main menu
+        if(application_name == 'quit'):
+            main()
+        elif(("-" in application_name) or (" " in application_name)):
+            print("Error! Please only provide the firm abbreviation (Ex: AU, US, KR)")
+        
+        else:
+            
+            project_name = api().get_project_versions(application_name)
+            #print(project_name)
+        #If project could not be found, user is prompted to try again
+            if(project_name.data['count'] == 0):
+                project_list = api().get_projects(application_name)
+                #print(project_list)
+                idx = 0
+                project_names_list = project_list.data['data']
+                project_dict = {}
+                for names in project_names_list:
+                    print(project_list.data['data'][idx]['name'])
+                    project_dict.update({idx: project_list.data['data'][idx]['name']})
+                    idx+=1
+                
+                print("Are these applications correct?")
+                print("\nPlease press the associated number for the desired action: \n")
+                print("1. Yes\n")
+                print("2. No\n")
+                query = input()
+     
+                if(query == "1"):
+                    provision_access_all(project_dict, userId)
+                elif(query == "2"):
+                    print("Please try again with the correct firm abbreviation.")
+                else:
+                    print("Invalid choice. Please try again.")
+                
+            
+def provision_access_all(project_dict, userId):
+    for project in project_dict:
+        count = 1
+        idx = 0
+        project_name = api().get_project_versions(project_dict.get(project))
+        multiple_project_response = project_name.data['data']
+        #Finds and prints the versions associated with the application
+        print("Application: " + project_dict.get(project) + "\n")
+        print("These project versions were found: ")
+        select_dict = {}
+        for names in multiple_project_response:
+            select_dict.update({project_name.data['data'][idx]['name']: project_name.data['data'][idx]['currentState']['id']})
+            print(str(count) + ". " + project_name.data['data'][idx]['name'])
+            count+=1
+            idx+=1
+        print("\n")
+        
+            
+        for versions in select_dict:
+            add_version = api().add_project_version(userId, select_dict.get(versions))
+            if(add_version.message == 'OK'):
+                print("Success! " + versions + " has been added.")
+            else:
+                print("Error! " + versions + " could not be added.")
+                
+        print("All associated projects have been added. Returning to main menu...")
+        main()
+        
 def main():
     
     try:
@@ -861,6 +977,7 @@ def main():
         print("5. Add a LDAP User\n")
         print("6. Quit and delete token\n")
         print("7. Add multiple LDAP Users\n")
+        print("8. Provision Access to all projects associated with a firm")
         
         query = input()
      
@@ -879,6 +996,8 @@ def main():
             exit()
         elif(query == "7"):
             add_multiple_users()
+        elif(query == "8"):
+            update_ldap_version_firm_level()
         else:
             print("Please try again with a valid choice.")
             main()
